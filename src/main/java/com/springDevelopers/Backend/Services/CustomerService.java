@@ -14,6 +14,10 @@ import com.springDevelopers.Backend.Repositories.OrderRepository;
 import com.springDevelopers.Backend.Repositories.ProductRepository;
 import com.springDevelopers.Backend.Repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -23,6 +27,7 @@ import java.util.Date;
 import java.util.Optional;
 
 @Service
+@CacheConfig(cacheNames = {"cartItems", "orders"})
 @RequiredArgsConstructor
 public class CustomerService {
     private final OrderRepository orderRepository;
@@ -30,6 +35,7 @@ public class CustomerService {
     private final UserRepository userRepository;
     private final CartItemsRepository cartItemsRepository;
 
+    @Cacheable(value = "cartItems", key = "#addProductToCartDTO.userId + '_' + #addProductToCartDTO.productId")
     public ResponseEntity<?> addProductToCart(AddProductToCartDTO addProductToCartDTO) {
         Order activeOrder = this.orderRepository.findByUserIdAndOrderStatus(addProductToCartDTO.getUserId(),
                 OrderStatus.PENDING);
@@ -57,7 +63,7 @@ public class CustomerService {
                 this.cartItemsRepository.save(cartItems);
 
                 CartDTO cartDTO = convertToCart(cartItems);
-                BigDecimal totalCost = BigDecimal.valueOf(addProductToCartDTO.getProductId()).multiply(cartItems.getPrice());
+                BigDecimal totalCost = BigDecimal.valueOf(addProductToCartDTO.getProductQuantity()).multiply(cartItems.getPrice());
                 activeOrder.setTotalAmount(activeOrder.getTotalAmount().add(totalCost));
                 activeOrder.getCartItemsList().add(cartItems);
                 this.orderRepository.save(activeOrder);
@@ -69,31 +75,42 @@ public class CustomerService {
         }
     }
 
+    @CachePut(value = "orders", key = "#placeOrderDto.userId")
     public OrderDto placeOrder(PlaceOrderDto placeOrderDto){
         Order activeOrder = this.orderRepository.findByUserIdAndOrderStatus(placeOrderDto.getUserId(),
                 OrderStatus.PENDING);
         Optional<User> user = this.userRepository.findById(placeOrderDto.getUserId());
 
-       if(activeOrder == null){
-           throw new NullPointerException("Order with status pending not found");
-       }
+        if(activeOrder == null){
+            throw new NullPointerException("Order with status pending not found");
+        }
         if(user.isPresent()){
             activeOrder.setOrderStatus(OrderStatus.PLACED);
             activeOrder.setOrderDescription(placeOrderDto.getOrderDescription());
             activeOrder.setOrderDate(new Date());
             activeOrder.setAddress(placeOrderDto.getAddress());
             this.orderRepository.save(activeOrder);
-            Order  order = new Order();
+
+            Order order = new Order();
             order.setTotalAmount(BigDecimal.valueOf(0.00));
             order.setOrderStatus(OrderStatus.PENDING);
             order.setUser(user.get());
             orderRepository.save(order);
-            OrderDto orderDto = placeOrderDto(activeOrder);
-            return orderDto;
 
+            OrderDto orderDto = new OrderDto();
+            orderDto.setOrderDescription(placeOrderDto.getOrderDescription());
+            orderDto.setId(activeOrder.getId());
+            orderDto.setOrderDate(activeOrder.getOrderDate());
+            orderDto.setTotalAmount(activeOrder.getTotalAmount());
+            orderDto.setOrderStatus(activeOrder.getOrderStatus());
+            orderDto.setAddress(placeOrderDto.getAddress());
+            orderDto.setUserId(activeOrder.getUser().getId());
+            return orderDto;
         }
         return null;
     }
+
+
 
     private CartDTO convertToCart(CartItems cartItems) {
         CartDTO cartDTO = new CartDTO();
@@ -104,16 +121,16 @@ public class CustomerService {
         cartDTO.setQuantity(cartItems.getQuantity());
         return cartDTO;
     }
-    private  OrderDto placeOrderDto(Order order){
+
+    private OrderDto placeOrderDto(Order order){
         OrderDto orderDto = new OrderDto();
-        orderDto.setId(orderDto.getId());
+        orderDto.setId(order.getId());
         orderDto.setAddress(order.getAddress());
         orderDto.setUserId(order.getUser().getId());
         orderDto.setTotalAmount(order.getTotalAmount());
         orderDto.setOrderStatus(order.getOrderStatus());
-        order.setOrderDescription(order.getOrderDescription());
+        orderDto.setOrderDescription(order.getOrderDescription());
         orderDto.setOrderDate(order.getOrderDate());
         return orderDto;
-
     }
 }
