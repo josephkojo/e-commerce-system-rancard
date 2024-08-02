@@ -17,7 +17,7 @@ public class Order {
     private Integer Id;
     private String orderDescription;
     private Date orderDate;
-    private String payment;
+    private String Address;
     @Enumerated(value = EnumType.STRING)
     private OrderStatus orderStatus;
     private BigDecimal totalAmount;

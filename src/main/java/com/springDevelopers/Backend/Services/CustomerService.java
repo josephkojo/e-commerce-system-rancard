@@ -2,6 +2,8 @@ package com.springDevelopers.Backend.Services;
 
 import com.springDevelopers.Backend.DTO.AddProductToCartDTO;
 import com.springDevelopers.Backend.DTO.CartDTO;
+import com.springDevelopers.Backend.DTO.OrderDto;
+import com.springDevelopers.Backend.DTO.PlaceOrderDto;
 import com.springDevelopers.Backend.Entities.CartItems;
 import com.springDevelopers.Backend.Entities.Order;
 import com.springDevelopers.Backend.Entities.Product;
@@ -17,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.Optional;
 
 @Service
@@ -66,6 +69,32 @@ public class CustomerService {
         }
     }
 
+    public OrderDto placeOrder(PlaceOrderDto placeOrderDto){
+        Order activeOrder = this.orderRepository.findByUserIdAndOrderStatus(placeOrderDto.getUserId(),
+                OrderStatus.PENDING);
+        Optional<User> user = this.userRepository.findById(placeOrderDto.getUserId());
+
+       if(activeOrder == null){
+           throw new NullPointerException("Order with status pending not found");
+       }
+        if(user.isPresent()){
+            activeOrder.setOrderStatus(OrderStatus.PLACED);
+            activeOrder.setOrderDescription(placeOrderDto.getOrderDescription());
+            activeOrder.setOrderDate(new Date());
+            activeOrder.setAddress(placeOrderDto.getAddress());
+            this.orderRepository.save(activeOrder);
+            Order  order = new Order();
+            order.setTotalAmount(BigDecimal.valueOf(0.00));
+            order.setOrderStatus(OrderStatus.PENDING);
+            order.setUser(user.get());
+            orderRepository.save(order);
+            OrderDto orderDto = placeOrderDto(activeOrder);
+            return orderDto;
+
+        }
+        return null;
+    }
+
     private CartDTO convertToCart(CartItems cartItems) {
         CartDTO cartDTO = new CartDTO();
         cartDTO.setId(cartItems.getId());
@@ -74,5 +103,17 @@ public class CustomerService {
         cartDTO.setPrice(cartItems.getPrice());
         cartDTO.setQuantity(cartItems.getQuantity());
         return cartDTO;
+    }
+    private  OrderDto placeOrderDto(Order order){
+        OrderDto orderDto = new OrderDto();
+        orderDto.setId(orderDto.getId());
+        orderDto.setAddress(order.getAddress());
+        orderDto.setUserId(order.getUser().getId());
+        orderDto.setTotalAmount(order.getTotalAmount());
+        orderDto.setOrderStatus(order.getOrderStatus());
+        order.setOrderDescription(order.getOrderDescription());
+        orderDto.setOrderDate(order.getOrderDate());
+        return orderDto;
+
     }
 }
