@@ -21,7 +21,7 @@ public class Order {
     @Enumerated(value = EnumType.STRING)
     private OrderStatus orderStatus;
     private BigDecimal totalAmount;
-    @OneToOne(cascade = CascadeType.MERGE)
+    @ManyToOne(cascade = CascadeType.MERGE)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
     @OneToMany(fetch = FetchType.LAZY,mappedBy = "order")
