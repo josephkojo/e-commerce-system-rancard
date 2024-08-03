@@ -36,7 +36,9 @@ public class AuthenticationService {
         user.setFirstname(registerRequest.getFirstname());
         user.setLastname(registerRequest.getLastname());
         user.setEmail(registerRequest.getEmail());
-        user.setRole(Role.USER);
+        Role role =  registerRequest.getRole().toLowerCase().equals(Role.CUSTOMER.toString().
+                toLowerCase()) ? Role.CUSTOMER :Role.PRODUCT_OWNER;
+        user.setRole(role);
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         this.userRepository.save(user);
         Order  order = new Order();

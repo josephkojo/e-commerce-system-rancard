@@ -31,9 +31,7 @@ public class UserService {
 
 
 
-    public boolean adminExists() {
-        return userRepository.existsByRole(Role.ADMIN);
-    }
+
 
 //    public void registerAdmin() {
 //        User user = new User();
