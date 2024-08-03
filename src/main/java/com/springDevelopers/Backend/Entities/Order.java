@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -14,17 +15,21 @@ import java.util.List;
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer Id;
+    private Integer id;
+
+    private BigDecimal totalAmount;
+
+    @Enumerated(EnumType.STRING)
+    private OrderStatus orderStatus;
+
     private String orderDescription;
     private Date orderDate;
-    private String Address;
-    @Enumerated(value = EnumType.STRING)
-    private OrderStatus orderStatus;
-    private BigDecimal totalAmount;
-    @ManyToOne(cascade = CascadeType.MERGE)
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
-    private User user;
-    @OneToMany(fetch = FetchType.LAZY,mappedBy = "order")
-    private List<CartItems> cartItemsList;
+    private String address;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CartItems> cartItemsList = new ArrayList<>();
 }

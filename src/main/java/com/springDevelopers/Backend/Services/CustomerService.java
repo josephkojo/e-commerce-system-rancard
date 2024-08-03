@@ -1,9 +1,6 @@
 package com.springDevelopers.Backend.Services;
 
-import com.springDevelopers.Backend.DTO.AddProductToCartDTO;
-import com.springDevelopers.Backend.DTO.CartDTO;
-import com.springDevelopers.Backend.DTO.OrderDto;
-import com.springDevelopers.Backend.DTO.PlaceOrderDto;
+import com.springDevelopers.Backend.DTO.*;
 import com.springDevelopers.Backend.Entities.CartItems;
 import com.springDevelopers.Backend.Entities.Order;
 import com.springDevelopers.Backend.Entities.Product;
@@ -13,6 +10,7 @@ import com.springDevelopers.Backend.Repositories.CartItemsRepository;
 import com.springDevelopers.Backend.Repositories.OrderRepository;
 import com.springDevelopers.Backend.Repositories.ProductRepository;
 import com.springDevelopers.Backend.Repositories.UserRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CachePut;
@@ -23,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Optional;
 
@@ -35,6 +34,8 @@ public class CustomerService {
     private final UserRepository userRepository;
     private final CartItemsRepository cartItemsRepository;
 
+
+    // A method for adding a product to Cart
     @Cacheable(value = "cartItems", key = "#addProductToCartDTO.userId + '_' + #addProductToCartDTO.productId")
     public ResponseEntity<?> addProductToCart(AddProductToCartDTO addProductToCartDTO) {
         Order activeOrder = this.orderRepository.findByUserIdAndOrderStatus(addProductToCartDTO.getUserId(),
@@ -74,7 +75,7 @@ public class CustomerService {
             }
         }
     }
-
+    // Method for implementing the Place Order EndPoint
     @CachePut(value = "orders", key = "#placeOrderDto.userId")
     public OrderDto placeOrder(PlaceOrderDto placeOrderDto){
         Order activeOrder = this.orderRepository.findByUserIdAndOrderStatus(placeOrderDto.getUserId(),
@@ -111,7 +112,7 @@ public class CustomerService {
     }
 
 
-
+    //Converting CartItems object to CartDTO
     private CartDTO convertToCart(CartItems cartItems) {
         CartDTO cartDTO = new CartDTO();
         cartDTO.setId(cartItems.getId());
@@ -120,6 +121,25 @@ public class CustomerService {
         cartDTO.setPrice(cartItems.getPrice());
         cartDTO.setQuantity(cartItems.getQuantity());
         return cartDTO;
+    }
+    // implementation for metrics and insights
+    public InsightsDto insights(){
+        Integer numberOfOrders = Math.toIntExact(this.orderRepository.findAll()
+                .stream().count());
+        Integer numberOfProducts = Math.toIntExact(this.productRepository
+                .findAll().stream().count());
+        Optional<Order> highestOrder = this.orderRepository.findAll()
+                .stream().max(Comparator.comparing(Order::getTotalAmount));
+        if(highestOrder.isPresent()){
+            Order highestOrderMade = highestOrder.get();
+            OrderDto orderDto = placeOrderDto(highestOrderMade);
+            InsightsDto insightsDto = new InsightsDto();
+            insightsDto.setNumberOfOrders(numberOfOrders);
+            insightsDto.setNumberOfProduct(numberOfProducts);
+            insightsDto.setHighestOrderMade(orderDto);
+            return insightsDto;
+        }
+        return null;
     }
 
     private OrderDto placeOrderDto(Order order){

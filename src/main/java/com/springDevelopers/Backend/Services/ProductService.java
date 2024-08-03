@@ -26,7 +26,8 @@ import java.util.stream.Collectors;
 public class ProductService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
-    private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+
+    public final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
     @CachePut(value = "products", key = "#productDTO.getUserId() + '_' + #productDTO.getName()")
     public Product addProduct(ProductDTO productDTO) {
@@ -36,7 +37,7 @@ public class ProductService {
         product.setName(productDTO.getName());
         product.setDescription(productDTO.getDescription());
         product.setPrice(productDTO.getPrice());
-        product.setQuantity(productDTO.getQuantity());
+
         product.setOwner(productOwner);
         productRepository.save(product);
         notifyProductUpdate(product);
@@ -52,7 +53,6 @@ public class ProductService {
             product.setName(productDTO.getName());
             product.setDescription(productDTO.getDescription());
             product.setPrice(productDTO.getPrice());
-            product.setQuantity(productDTO.getQuantity());
             product.setOwner(productOwner);
             productRepository.save(product);
             notifyProductUpdate(product);
@@ -92,10 +92,11 @@ public class ProductService {
 
     private ProductDTO convertToProductDto(Product product) {
         ProductDTO productDTO = new ProductDTO();
+        productDTO.setId(Math.toIntExact(product.getId()));
         productDTO.setName(product.getName());
         productDTO.setDescription(product.getDescription());
         productDTO.setPrice(product.getPrice());
-        productDTO.setQuantity(product.getQuantity());
+
         productDTO.setCreatedAt(product.getCreatedAt());
         productDTO.setUpdatedAt(product.getUpdatedAt());
         productDTO.setUserId(product.getOwner().getId());
@@ -112,4 +113,6 @@ public class ProductService {
         }
         return false;
     }
+
+
 }

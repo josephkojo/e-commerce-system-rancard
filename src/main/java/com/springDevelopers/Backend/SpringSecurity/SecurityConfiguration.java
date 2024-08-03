@@ -26,7 +26,7 @@ public class SecurityConfiguration {
                 .permitAll()
                 .and()
                 .authorizeHttpRequests()
-                .requestMatchers("/customer/**",  "/productOwner/**")
+                .requestMatchers("/products/**",  "/cart/**","/orders")
                 .authenticated()
                 .and()
                 .sessionManagement()

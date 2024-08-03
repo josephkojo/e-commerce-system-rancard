@@ -15,16 +15,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/customer")
 @RequiredArgsConstructor
 public class CustomerController {
     private final CustomerService customerService;
 
-    @PostMapping("/addCart")
+    @PostMapping("/cart")
     public ResponseEntity<?> addProductToCart(@RequestBody AddProductToCartDTO addProductToCartDTO){
         return  this.customerService.addProductToCart(addProductToCartDTO);
     }
-    @PostMapping("/placeOrder")
+    @PostMapping("/orders")
     public ResponseEntity<OrderDto> placeOrder(@RequestBody PlaceOrderDto placeOrderDto){
         OrderDto orderDto = this.customerService.placeOrder(placeOrderDto);
         return new ResponseEntity<>(orderDto, HttpStatus.CREATED);
