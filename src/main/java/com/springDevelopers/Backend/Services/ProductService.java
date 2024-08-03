@@ -6,6 +6,10 @@ import com.springDevelopers.Backend.Entities.User;
 import com.springDevelopers.Backend.Repositories.ProductRepository;
 import com.springDevelopers.Backend.Repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -17,15 +21,17 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Service
+@CacheConfig(cacheNames = {"products"})
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
-
-    public Product addProduct(ProductDTO productDTO){
-        User productOwner = userRepository.findById(productDTO.getUserId()).orElseThrow(() -> new RuntimeException("User not found"));
+    @CachePut(value = "products", key = "#productDTO.getUserId() + '_' + #productDTO.getName()")
+    public Product addProduct(ProductDTO productDTO) {
+        User productOwner = userRepository.findById(productDTO.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
         Product product = new Product();
         product.setName(productDTO.getName());
         product.setDescription(productDTO.getDescription());
@@ -33,8 +39,11 @@ public class ProductService {
         product.setQuantity(productDTO.getQuantity());
         product.setOwner(productOwner);
         productRepository.save(product);
+        notifyProductUpdate(product);
         return product;
     }
+
+    @CachePut(value = "products", key = "#productId")
     public Optional<Product> updateProduct(Integer productId, ProductDTO productDTO) {
         Optional<Product> productOptional = productRepository.findById(productId);
         User productOwner = userRepository.findById(productDTO.getUserId())
@@ -51,12 +60,13 @@ public class ProductService {
         });
     }
 
-    public List<ProductDTO> getAllProduct(){
+    @Cacheable(value = "products")
+    public List<ProductDTO> getAllProduct() {
         List<Product> allProducts = this.productRepository.findAll();
-        List<ProductDTO> listAllProduct = allProducts.stream().map(this::convertToProductDto)
+        return allProducts.stream().map(this::convertToProductDto)
                 .collect(Collectors.toList());
-        return listAllProduct;
     }
+
     public SseEmitter addProductEmitter() {
         SseEmitter emitter = new SseEmitter();
         emitters.add(emitter);
@@ -66,6 +76,7 @@ public class ProductService {
 
         return emitter;
     }
+
     public void notifyProductUpdate(Product product) {
         List<SseEmitter> deadEmitters = new CopyOnWriteArrayList<>();
         emitters.forEach(emitter -> {
@@ -79,10 +90,7 @@ public class ProductService {
         emitters.removeAll(deadEmitters);
     }
 
-
-
-
-    private ProductDTO convertToProductDto(Product product){
+    private ProductDTO convertToProductDto(Product product) {
         ProductDTO productDTO = new ProductDTO();
         productDTO.setName(product.getName());
         productDTO.setDescription(product.getDescription());
@@ -94,15 +102,14 @@ public class ProductService {
         return productDTO;
     }
 
-    public Boolean deleteProduct(Integer productId){
+    @CacheEvict(value = "products", key = "#productId")
+    public Boolean deleteProduct(Integer productId) {
         Optional<Product> product = this.productRepository.findById(productId);
-        Boolean productIsPresent = product.isPresent() ? true : false;
-        if(productIsPresent){
+        Boolean productIsPresent = product.isPresent();
+        if (productIsPresent) {
             this.productRepository.deleteById(productId);
             return true;
         }
         return false;
-
     }
-
 }
